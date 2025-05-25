@@ -1,1 +1,31 @@
-
+<!doctype html>
+<html>
+<head>
+    <title>Magistr CRM</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <h1>Magistr O‘quv Markazi – CRM tizimi</h1>
+    <a href="/register">+ Yangi abituriyent</a>
+    <table>
+        <tr>
+            <th>ID</th><th>Ism</th><th>Telefon</th><th>Kurs</th><th>Status</th><th>Izoh</th><th>Amallar</th>
+        </tr>
+        {% for a in applicants %}
+        <tr>
+            <td>{{ a[0] }}</td>
+            <td>{{ a[1] }}</td>
+            <td>{{ a[2] }}</td>
+            <td>{{ a[3] }}</td>
+            <td>{{ a[4] }}</td>
+            <td>{{ a[5] }}</td>
+            <td>
+                <a href="/accept/{{ a[0] }}">Qabul</a>
+                <a href="/reject/{{ a[0] }}">Rad</a>
+                <a href="/delete/{{ a[0] }}">O‘chirish</a>
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+</body>
+</html>
