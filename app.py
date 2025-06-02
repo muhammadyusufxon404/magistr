@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for
 import sqlite3
 import requests
-from datetime import datetime, timedelta
+from datetime import datetime
 import pytz
 
 app = Flask(__name__)
@@ -23,6 +23,9 @@ def init_db():
                 created_at TEXT
             )
         """)
+
+# 📌 Gunicorn uchun bazani ishga tushganda yaratish
+init_db()
 
 def send_telegram_notification(message):
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
@@ -95,6 +98,4 @@ def delete(id):
     return redirect(url_for('index'))
 
 if __name__ == '__main__':
-    init_db()
     app.run(debug=True)
-
