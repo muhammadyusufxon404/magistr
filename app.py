@@ -6,8 +6,8 @@ import pytz
 
 app = Flask(__name__)
 DATABASE = 'crm.db'
-TOKEN = '6730091039:AAH-XJ7CyjOGOSkFDYMbAuifpsREMLm2zd8'        # Telegram Bot Token
-CHAT_ID = '6855997739'       # Admin Telegram chat ID
+TOKEN = '6730091039:AAH-XJ7CyjOGOSkFDYMbAuifpsREMLm2zd8'  # Telegram Bot Token
+CHAT_ID = '6855997739'  # Admin Telegram chat ID
 
 def init_db():
     with sqlite3.connect(DATABASE) as conn:
@@ -32,7 +32,22 @@ def send_telegram_notification(message):
 def index():
     with sqlite3.connect(DATABASE) as conn:
         applicants = conn.execute("SELECT * FROM applicants").fetchall()
-    return render_template('dashboard.html', applicants=applicants)
+
+    # Statuslarni o‘zbekchaga o‘zgartirish uchun lug‘at
+    status_dict = {
+        'pending': 'Kutmoqda',
+        'accepted': 'Qabul qilindi',
+        'rejected': 'Rad etildi'
+    }
+
+    # Har bir arizachining statusini o‘zbekchaga almashtiramiz
+    applicants_uz = []
+    for a in applicants:
+        a_list = list(a)
+        a_list[5] = status_dict.get(a_list[5], a_list[5])  # status ustuni index 5
+        applicants_uz.append(a_list)
+
+    return render_template('dashboard.html', applicants=applicants_uz)
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -103,6 +118,5 @@ def notify_pending_applicants():
 
 if __name__ == '__main__':
     init_db()
-    # Agar hohlasangiz, notify_pending_applicants() funksiyasini har ishga tushirishda chaqirishingiz mumkin
-    # notify_pending_applicants()
+    # notify_pending_applicants() # Kerak bo‘lsa ishga tushirish mumkin
     app.run(debug=True)
