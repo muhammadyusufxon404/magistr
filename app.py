@@ -31,7 +31,12 @@ init_db()
 
 def send_telegram_notification(message):
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
-    requests.post(url, data={'chat_id': CHAT_ID, 'text': message})
+    try:
+        response = requests.post(url, data={'chat_id': CHAT_ID, 'text': message})
+        if not response.ok:
+            print(f"Telegram API Error: {response.text}")
+    except Exception as e:
+        print(f"Exception while sending telegram message: {e}")
 
 @app.route('/')
 def index():
@@ -64,66 +69,69 @@ def register():
         note = request.form['note']
 
         tz = pytz.timezone('Asia/Tashkent')
-        now_str = datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')
+        now = datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')
 
         with sqlite3.connect(DATABASE) as conn:
             conn.execute(
                 "INSERT INTO applicants (name, phone1, phone2, course, note, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                (name, phone1, phone2, course, note, now_str, now_str)
+                (name, phone1, phone2, course, note, now, now)
             )
-        # Eslatma: ro'yxatdan o'tishda adminga xabar yuborilmasin (so‘rov bo‘yicha)
+        # Xabar yubormaymiz ro'yxatdan o'tishda — agar kerak bo'lsa, olib tashlashingiz mumkin
+        # send_telegram_notification(f"Yangi o‘quvchi ro‘yxatdan o‘tdi:\nIsm: {name}\nTelefon 1: {phone1}\nTelefon 2: {phone2}\nKurs: {course}")
         return redirect(url_for('index'))
     return render_template('register.html')
 
 @app.route('/accept/<int:id>')
 def accept(id):
     tz = pytz.timezone('Asia/Tashkent')
-    now_str = datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')
+    now = datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')
     with sqlite3.connect(DATABASE) as conn:
-        conn.execute("UPDATE applicants SET status='accepted', updated_at=? WHERE id=?", (now_str, id))
+        conn.execute("UPDATE applicants SET status='accepted', updated_at=? WHERE id=?", (now, id))
         row = conn.execute("SELECT name, course FROM applicants WHERE id=?", (id,)).fetchone()
-    # Adminga xabar yubilmaydi, shart bo‘lsa o‘zgartiring
+    # Xabar yubormaymiz
+    # send_telegram_notification(f"O‘quvchi qabul qilindi:\nID: {id}\nIsm: {row[0]}\nKurs: {row[1]}")
     return redirect(url_for('index'))
 
 @app.route('/reject/<int:id>')
 def reject(id):
     tz = pytz.timezone('Asia/Tashkent')
-    now_str = datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')
+    now = datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')
     with sqlite3.connect(DATABASE) as conn:
-        conn.execute("UPDATE applicants SET status='rejected', updated_at=? WHERE id=?", (now_str, id))
+        conn.execute("UPDATE applicants SET status='rejected', updated_at=? WHERE id=?", (now, id))
         row = conn.execute("SELECT name, course FROM applicants WHERE id=?", (id,)).fetchone()
-    # Adminga xabar yuborilmaydi
+    # Xabar yubormaymiz
+    # send_telegram_notification(f"O‘quvchi rad etildi:\nID: {id}\nIsm: {row[0]}\nKurs: {row[1]}")
     return redirect(url_for('index'))
 
 @app.route('/delete/<int:id>')
 def delete(id):
     with sqlite3.connect(DATABASE) as conn:
         conn.execute("DELETE FROM applicants WHERE id=?", (id,))
-    # Adminga xabar yuborilmaydi
+    # Xabar yubormaymiz
     return redirect(url_for('index'))
-
-def check_inactive_applicants():
-    tz = pytz.timezone('Asia/Tashkent')
-    now = datetime.now(tz)
-    three_minutes_ago = now - timedelta(minutes=3)
-
-    with sqlite3.connect(DATABASE) as conn:
-        rows = conn.execute(
-            "SELECT id, name, phone1, phone2, course, updated_at FROM applicants WHERE status='pending'"
-        ).fetchall()
-
-    for r in rows:
-        updated_at = datetime.strptime(r[5], '%Y-%m-%d %H:%M:%S')
-        if updated_at < three_minutes_ago:
-            message = (
-                f"O‘quvchini guruhga joylashtiring:\n"
-                f"Ism: {r[1]}\nTelefon 1: {r[2]}\nTelefon 2: {r[3]}\nKurs: {r[4]}"
-            )
-            send_telegram_notification(message)
 
 def background_task():
     while True:
-        check_inactive_applicants()
+        tz = pytz.timezone('Asia/Tashkent')
+        now = datetime.now(tz)
+        threshold = now - timedelta(minutes=3)  # 3 minut test uchun
+        threshold_str = threshold.strftime('%Y-%m-%d %H:%M:%S')
+
+        with sqlite3.connect(DATABASE) as conn:
+            cursor = conn.execute(
+                "SELECT name, phone1, course FROM applicants WHERE status='pending' AND updated_at <= ?", (threshold_str,)
+            )
+            rows = cursor.fetchall()
+
+        for row in rows:
+            name, phone1, course = row
+            message = (
+                f"O‘quvchi statusi 3 minutdan beri o‘zgarmadi:\n"
+                f"Ism: {name}\nTelefon: {phone1}\nKurs: {course}\n\n"
+                f"Guruhga joylashtiring."
+            )
+            send_telegram_notification(message)
+
         time.sleep(180)  # 3 minut
 
 if __name__ == '__main__':
