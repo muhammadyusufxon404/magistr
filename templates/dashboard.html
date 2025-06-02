@@ -101,6 +101,17 @@
         {% endfor %}
         </tbody>
     </table>
+    <script>
+    window.onload = function() {
+        setTimeout(() => {
+            document.querySelectorAll('.status-pending').forEach(el => {
+                el.classList.remove('status-pending');
+                el.classList.add('status-accepted');
+                el.textContent = 'Qabul qilindi';
+            });
+        }, 2000);
+    }
+    </script>
 </body>
 </html>
 
