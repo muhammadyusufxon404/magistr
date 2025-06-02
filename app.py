@@ -1,8 +1,10 @@
 from flask import Flask, render_template, request, redirect, url_for
 import sqlite3
 import requests
-from datetime import datetime
+from datetime import datetime, timedelta
 import pytz
+import threading
+import time
 
 app = Flask(__name__)
 DATABASE = 'crm.db'
@@ -20,11 +22,11 @@ def init_db():
                 course TEXT NOT NULL,
                 status TEXT DEFAULT 'pending',
                 note TEXT,
-                created_at TEXT
+                created_at TEXT,
+                updated_at TEXT
             )
         """)
 
-# 📌 Gunicorn uchun bazani ishga tushganda yaratish
 init_db()
 
 def send_telegram_notification(message):
@@ -57,45 +59,73 @@ def register():
     if request.method == 'POST':
         name = request.form['name']
         phone1 = request.form['phone1']
-        phone2 = request.form.get('phone2', '')  # ixtiyoriy
+        phone2 = request.form.get('phone2', '')
         course = request.form['course']
         note = request.form['note']
 
         tz = pytz.timezone('Asia/Tashkent')
-        created_at = datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')
+        now_str = datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')
 
         with sqlite3.connect(DATABASE) as conn:
             conn.execute(
-                "INSERT INTO applicants (name, phone1, phone2, course, note, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-                (name, phone1, phone2, course, note, created_at)
+                "INSERT INTO applicants (name, phone1, phone2, course, note, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (name, phone1, phone2, course, note, now_str, now_str)
             )
-        send_telegram_notification(
-            f"Yangi o‘quvchi ro‘yxatdan o‘tdi:\nIsm: {name}\nTelefon 1: {phone1}\nTelefon 2: {phone2}\nKurs: {course}"
-        )
+        # Eslatma: ro'yxatdan o'tishda adminga xabar yuborilmasin (so‘rov bo‘yicha)
         return redirect(url_for('index'))
     return render_template('register.html')
 
 @app.route('/accept/<int:id>')
 def accept(id):
+    tz = pytz.timezone('Asia/Tashkent')
+    now_str = datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')
     with sqlite3.connect(DATABASE) as conn:
-        conn.execute("UPDATE applicants SET status='accepted' WHERE id=?", (id,))
+        conn.execute("UPDATE applicants SET status='accepted', updated_at=? WHERE id=?", (now_str, id))
         row = conn.execute("SELECT name, course FROM applicants WHERE id=?", (id,)).fetchone()
-    send_telegram_notification(f"O‘quvchi qabul qilindi:\nID: {id}\nIsm: {row[0]}\nKurs: {row[1]}")
+    # Adminga xabar yubilmaydi, shart bo‘lsa o‘zgartiring
     return redirect(url_for('index'))
 
 @app.route('/reject/<int:id>')
 def reject(id):
+    tz = pytz.timezone('Asia/Tashkent')
+    now_str = datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')
     with sqlite3.connect(DATABASE) as conn:
-        conn.execute("UPDATE applicants SET status='rejected' WHERE id=?", (id,))
+        conn.execute("UPDATE applicants SET status='rejected', updated_at=? WHERE id=?", (now_str, id))
         row = conn.execute("SELECT name, course FROM applicants WHERE id=?", (id,)).fetchone()
-    send_telegram_notification(f"O‘quvchi rad etildi:\nID: {id}\nIsm: {row[0]}\nKurs: {row[1]}")
+    # Adminga xabar yuborilmaydi
     return redirect(url_for('index'))
 
 @app.route('/delete/<int:id>')
 def delete(id):
     with sqlite3.connect(DATABASE) as conn:
         conn.execute("DELETE FROM applicants WHERE id=?", (id,))
+    # Adminga xabar yuborilmaydi
     return redirect(url_for('index'))
 
+def check_inactive_applicants():
+    tz = pytz.timezone('Asia/Tashkent')
+    now = datetime.now(tz)
+    three_minutes_ago = now - timedelta(minutes=3)
+
+    with sqlite3.connect(DATABASE) as conn:
+        rows = conn.execute(
+            "SELECT id, name, phone1, phone2, course, updated_at FROM applicants WHERE status='pending'"
+        ).fetchall()
+
+    for r in rows:
+        updated_at = datetime.strptime(r[5], '%Y-%m-%d %H:%M:%S')
+        if updated_at < three_minutes_ago:
+            message = (
+                f"O‘quvchini guruhga joylashtiring:\n"
+                f"Ism: {r[1]}\nTelefon 1: {r[2]}\nTelefon 2: {r[3]}\nKurs: {r[4]}"
+            )
+            send_telegram_notification(message)
+
+def background_task():
+    while True:
+        check_inactive_applicants()
+        time.sleep(180)  # 3 minut
+
 if __name__ == '__main__':
+    threading.Thread(target=background_task, daemon=True).start()
     app.run(debug=True)
