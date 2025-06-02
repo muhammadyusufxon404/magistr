@@ -6,8 +6,8 @@ import pytz
 
 app = Flask(__name__)
 DATABASE = 'crm.db'
-TOKEN = '6730091039:AAH-XJ7CyjOGOSkFDYMbAuifpsREMLm2zd8'  # Telegram Bot Token
-CHAT_ID = '6855997739'  # Admin Telegram chat ID
+ TOKEN = '6730091039:AAH-XJ7CyjOGOSkFDYMbAuifpsREMLm2zd8'  # Telegram Bot Token
+ CHAT_ID = '6855997739'  # Admin Telegram chat ID
 
 def init_db():
     with sqlite3.connect(DATABASE) as conn:
@@ -33,18 +33,18 @@ def index():
     with sqlite3.connect(DATABASE) as conn:
         applicants = conn.execute("SELECT * FROM applicants").fetchall()
 
-    # Statuslarni o‘zbekchaga o‘zgartirish uchun lug‘at
     status_dict = {
-        'pending': 'Kutmoqda',
-        'accepted': 'Qabul qilindi',
-        'rejected': 'Rad etildi'
+        'pending': ('Kutmoqda', 'status-pending'),
+        'accepted': ('Qabul qilindi', 'status-accepted'),
+        'rejected': ('Rad etildi', 'status-rejected')
     }
 
-    # Har bir arizachining statusini o‘zbekchaga almashtiramiz
     applicants_uz = []
     for a in applicants:
         a_list = list(a)
-        a_list[5] = status_dict.get(a_list[5], a_list[5])  # status ustuni index 5
+        uzbek_status, css_class = status_dict.get(a_list[5], (a_list[5], ''))
+        a_list[5] = uzbek_status
+        a_list.append(css_class)
         applicants_uz.append(a_list)
 
     return render_template('dashboard.html', applicants=applicants_uz)
@@ -94,29 +94,7 @@ def delete(id):
         conn.execute("DELETE FROM applicants WHERE id=?", (id,))
     return redirect(url_for('index'))
 
-def notify_pending_applicants():
-    tz = pytz.timezone('Asia/Tashkent')
-    now = datetime.now(tz)
-    three_days_ago = now - timedelta(days=3)
-    three_days_ago_str = three_days_ago.strftime('%Y-%m-%d %H:%M:%S')
-
-    with sqlite3.connect(DATABASE) as conn:
-        pending = conn.execute("""
-            SELECT name, course, phone1, phone2, note FROM applicants
-            WHERE status='pending' AND created_at <= ?
-        """, (three_days_ago_str,)).fetchall()
-
-    if pending:
-        message = "❗ 3 kundan beri qabul qilinmagan o‘quvchilar:\n\n"
-        for name, course, phone1, phone2, note in pending:
-            phones = phone1
-            if phone2:
-                phones += f", {phone2}"
-            note_text = note if note else "—"
-            message += f"Ism: {name}\nKurs: {course}\nTelefonlar: {phones}\nIzoh: {note_text}\n\n"
-        send_telegram_notification(message)
-
 if __name__ == '__main__':
     init_db()
-    # notify_pending_applicants() # Kerak bo‘lsa ishga tushirish mumkin
     app.run(debug=True)
+
