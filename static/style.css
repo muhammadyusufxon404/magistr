@@ -2,6 +2,7 @@ body {
     font-family: Arial, sans-serif;
     background-color: #f8f9fa;
     padding: 20px;
+    transition: background-color 0.3s ease;
 }
 
 h1 {
@@ -12,10 +13,12 @@ a {
     color: #0d47a1;
     text-decoration: none;
     margin-right: 10px;
+    transition: color 0.3s ease;
 }
 
 a:hover {
     text-decoration: underline;
+    color: #063971; /* biroz quyuqroq */
 }
 
 form input, form textarea, form button {
@@ -26,6 +29,13 @@ form input, form textarea, form button {
     max-width: 100%;
     border-radius: 5px;
     border: 1px solid #ccc;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+form input:focus, form textarea:focus {
+    border-color: #1a237e;
+    box-shadow: 0 0 5px rgba(26, 35, 126, 0.6);
+    outline: none;
 }
 
 form button {
@@ -33,6 +43,7 @@ form button {
     color: white;
     cursor: pointer;
     border: none;
+    transition: background-color 0.3s ease;
 }
 
 form button:hover {
@@ -44,6 +55,12 @@ table {
     border-collapse: collapse;
     margin-top: 20px;
     background-color: white;
+    transition: box-shadow 0.3s ease;
+    box-shadow: 0 0 10px rgba(0,0,0,0.05);
+}
+
+table:hover {
+    box-shadow: 0 0 15px rgba(0,0,0,0.1);
 }
 
 table, th, td {
@@ -58,20 +75,33 @@ th, td {
 th {
     background-color: #1a237e;
     color: white;
+    user-select: none;
 }
 
-/* Statuslarga rang berish */
+/* Jadval satriga hover effekti va animatsiya */
+tbody tr {
+    transition: background-color 0.3s ease;
+}
+
+tbody tr:hover {
+    background-color: #e8eaf6;
+}
+
+/* Statuslarga rang berish va animatsiya */
 .status-accepted {
     background-color: #d4edda;
     color: #155724;
+    transition: background-color 0.5s ease, color 0.5s ease;
 }
 
 .status-rejected {
     background-color: #f8d7da;
     color: #721c24;
+    transition: background-color 0.5s ease, color 0.5s ease;
 }
 
 .status-pending {
     background-color: #fff3cd;
     color: #856404;
+    transition: background-color 0.5s ease, color 0.5s ease;
 }
