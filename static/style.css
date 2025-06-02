@@ -1,12 +1,12 @@
-
 body {
-    font-family: Arial, sans-serif;
-    background-color: #f8f9fa;
-    padding: 20px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #e8ebf7;
+    padding: 25px;
+    font-size: 16px;
 }
 
 h1 {
-    color: #1a237e;
+    color: #0d1b52;
 }
 
 a {
@@ -21,12 +21,19 @@ a:hover {
 
 form input, form textarea, form button {
     display: block;
-    margin: 10px 0;
-    padding: 8px;
-    width: 300px;
-    max-width: 100%;
+    margin: 8px 0;
+    padding: 10px;
+    width: 100%;
+    max-width: 400px;
     border-radius: 5px;
     border: 1px solid #ccc;
+    box-sizing: border-box;
+}
+
+form input:focus, form textarea:focus {
+    border-color: #3949ab;
+    box-shadow: 0 0 5px rgba(57, 73, 171, 0.5);
+    outline: none;
 }
 
 form button {
@@ -34,6 +41,7 @@ form button {
     color: white;
     cursor: pointer;
     border: none;
+    transition: background-color 0.3s ease;
 }
 
 form button:hover {
@@ -55,6 +63,20 @@ th, td {
     padding: 10px;
     text-align: left;
 }
+
+th {
+    background-color: #1a237e;
+    color: white;
+}
+
+table tr:nth-child(even) {
+    background-color: #f2f2f2;
+}
+
+table tr:hover {
+    background-color: #ddd;
+}
+
 
 th {
     background-color: #1a237e;
