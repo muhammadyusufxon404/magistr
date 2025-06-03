@@ -6,8 +6,8 @@ import pytz
 
 app = Flask(__name__)
 DATABASE = 'crm.db'
-TOKEN = 'YOUR_TELEGRAM_BOT_TOKEN'
-CHAT_ID = 'YOUR_TELEGRAM_CHAT_ID'
+TOKEN = '6730091039:AAH-XJ7CyjOGOSkFDYMbAuifpsREMLm2zd8'
+CHAT_ID = '6855997739'
 
 def init_db():
     with sqlite3.connect(DATABASE) as conn:
