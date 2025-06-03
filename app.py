@@ -5,9 +5,12 @@ from datetime import datetime
 import pytz
 import threading
 import time
+import os
 
 app = Flask(__name__)
 DATABASE = 'crm.db'
+
+# Telegram bot token va chat ID (o'zingizniki bilan almashtiring)
 TOKEN = '6730091039:AAH-XJ7CyjOGOSkFDYMbAuifpsREMLm2zd8'
 CHAT_ID = '6855997739'
 
@@ -107,15 +110,8 @@ def check_pending_applicants():
             rows = conn.execute("SELECT id, name, phone1, course, status, status_updated_at FROM applicants WHERE status='pending'").fetchall()
             for row in rows:
                 id, name, phone1, course, status, status_updated_at = row
-
-                if status_updated_at is None:
-                    continue  # Agar sana bo'lmasa, o'tkazib yubor
-
-                # 'status_updated_at' offset-naive (timezone ko'rsatilmagan) string sifatida saqlangan,
-                # uni offset-aware datetimega o'tkazish uchun avval parse qilamiz, keyin lokalizatsiya qilamiz
                 status_time_naive = datetime.strptime(status_updated_at, '%Y-%m-%d %H:%M:%S')
                 status_time = tz.localize(status_time_naive)
-                
                 delta = now - status_time
                 if delta.total_seconds() > 30:  # 30 soniya test uchun
                     message = (
@@ -131,4 +127,6 @@ def check_pending_applicants():
 if __name__ == '__main__':
     thread = threading.Thread(target=check_pending_applicants, daemon=True)
     thread.start()
-    app.run(debug=True)
+    # LOCAL TEST uchun:
+    port = int(os.environ.get('PORT', 8080))
+    app.run(host='0.0.0.0', port=port, debug=True)
