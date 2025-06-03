@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for
 import sqlite3
 import requests
-from datetime import datetime, timedelta
+from datetime import datetime
 import pytz
 import threading
 import time
@@ -31,7 +31,10 @@ init_db()
 
 def send_telegram_notification(message):
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
-    requests.post(url, data={'chat_id': CHAT_ID, 'text': message})
+    try:
+        requests.post(url, data={'chat_id': CHAT_ID, 'text': message})
+    except Exception as e:
+        print("Telegramga xabar yuborishda xatolik:", e)
 
 @app.route('/')
 def index():
@@ -71,6 +74,7 @@ def register():
                 "INSERT INTO applicants (name, phone1, phone2, course, note, created_at, status_updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
                 (name, phone1, phone2, course, note, now, now)
             )
+        # Yangi o'quvchi qo'shilganda adminga xabar yuborilmaydi
         return redirect(url_for('index'))
     return render_template('register.html')
 
@@ -80,6 +84,7 @@ def accept(id):
     now = datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')
     with sqlite3.connect(DATABASE) as conn:
         conn.execute("UPDATE applicants SET status='accepted', status_updated_at=? WHERE id=?", (now, id))
+    # Qabul qilinganda adminga xabar yuborilmaydi
     return redirect(url_for('index'))
 
 @app.route('/reject/<int:id>')
@@ -88,50 +93,39 @@ def reject(id):
     now = datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')
     with sqlite3.connect(DATABASE) as conn:
         conn.execute("UPDATE applicants SET status='rejected', status_updated_at=? WHERE id=?", (now, id))
+    # Rad etilganda adminga xabar yuborilmaydi
     return redirect(url_for('index'))
 
 @app.route('/delete/<int:id>')
 def delete(id):
     with sqlite3.connect(DATABASE) as conn:
         conn.execute("DELETE FROM applicants WHERE id=?", (id,))
+    # O'chirilganda ham adminga xabar yuborilmaydi
     return redirect(url_for('index'))
 
-# -------------------------
-# Fon (background) jarayon
-# -------------------------
-
 def check_pending_applicants():
+    tz = pytz.timezone('Asia/Tashkent')
     while True:
-        try:
-            tz = pytz.timezone('Asia/Tashkent')
-            now = datetime.now(tz)
-            with sqlite3.connect(DATABASE) as conn:
-                rows = conn.execute("""
-                    SELECT id, name, course, status_updated_at 
-                    FROM applicants 
-                    WHERE status='pending'
-                """).fetchall()
+        now = datetime.now(tz)
+        with sqlite3.connect(DATABASE) as conn:
+            rows = conn.execute("SELECT id, name, phone1, course, status, status_updated_at FROM applicants WHERE status='pending'").fetchall()
+            for row in rows:
+                id, name, phone1, course, status, status_updated_at = row
+                status_time_naive = datetime.strptime(status_updated_at, '%Y-%m-%d %H:%M:%S')
+                status_time = tz.localize(status_time_naive)
+                delta = now - status_time
+                if delta.total_seconds() > 30:  # 30 soniya test uchun
+                    message = (
+                        f"🕒 30 soniya davomida o'quvchining statusi o'zgarmadi!\n"
+                        f"Ismi: {name}\n"
+                        f"Telefon: {phone1}\n"
+                        f"Kurs: {course}\n"
+                        f"❗ Guruhga joylashtiring!"
+                    )
+                    send_telegram_notification(message)
+        time.sleep(10)  # Har 10 soniyada tekshiradi
 
-                for row in rows:
-                    id, name, course, status_updated_at = row
-                    status_time = datetime.strptime(status_updated_at, '%Y-%m-%d %H:%M:%S')
-                    delta = now - status_time
-
-                    if delta.total_seconds() > 180:  # 3 daqiqa test uchun (aslida 3*24*60*60 bo‘ladi = 3 kun)
-                        message = f"⏳ {name} ({course}) 3 daqiqadan beri kutmoqda. Iltimos, ko‘rib chiqing."
-                        send_telegram_notification(message)
-
-        except Exception as e:
-            print(f"Xatolik fon tekshiruvda: {e}")
-
-        time.sleep(60)  # 1 daqiqa kutadi, keyin yana tekshiradi
-
-# Dastur ishga tushganda fon jarayonni boshlash
-background_thread = threading.Thread(target=check_pending_applicants, daemon=True)
-background_thread.start()
-
-# -------------------------
-# Flask ilovani ishga tushirish
-# -------------------------
 if __name__ == '__main__':
+    thread = threading.Thread(target=check_pending_applicants, daemon=True)
+    thread.start()
     app.run(debug=True)
