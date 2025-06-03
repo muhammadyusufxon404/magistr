@@ -11,8 +11,8 @@ app = Flask(__name__)
 DATABASE = 'crm.db'
 
 # Telegram bot token va chat ID ni o'zingizning ma'lumotlaringizga almashtiring
-TOKEN = 'SIZNING_BOT_TOKEN'
-CHAT_ID = 'SIZNING_CHAT_ID'
+TOKEN = '6730091039:AAGv2ADImmqtJsLBHbcpHYGcmHK9-FuILGE'
+CHAT_ID = '6855997739'
 
 # DB ni yaratish uchun funksiya
 def init_db():
