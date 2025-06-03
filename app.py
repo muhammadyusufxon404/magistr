@@ -74,7 +74,6 @@ def register():
                 "INSERT INTO applicants (name, phone1, phone2, course, note, created_at, status_updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
                 (name, phone1, phone2, course, note, now, now)
             )
-        # Yangi o'quvchi qo'shilganda adminga xabar yuborilmaydi
         return redirect(url_for('index'))
     return render_template('register.html')
 
@@ -84,7 +83,6 @@ def accept(id):
     now = datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')
     with sqlite3.connect(DATABASE) as conn:
         conn.execute("UPDATE applicants SET status='accepted', status_updated_at=? WHERE id=?", (now, id))
-    # Qabul qilinganda adminga xabar yuborilmaydi
     return redirect(url_for('index'))
 
 @app.route('/reject/<int:id>')
@@ -93,14 +91,12 @@ def reject(id):
     now = datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')
     with sqlite3.connect(DATABASE) as conn:
         conn.execute("UPDATE applicants SET status='rejected', status_updated_at=? WHERE id=?", (now, id))
-    # Rad etilganda adminga xabar yuborilmaydi
     return redirect(url_for('index'))
 
 @app.route('/delete/<int:id>')
 def delete(id):
     with sqlite3.connect(DATABASE) as conn:
         conn.execute("DELETE FROM applicants WHERE id=?", (id,))
-    # O'chirilganda ham adminga xabar yuborilmaydi
     return redirect(url_for('index'))
 
 def check_pending_applicants():
@@ -111,8 +107,15 @@ def check_pending_applicants():
             rows = conn.execute("SELECT id, name, phone1, course, status, status_updated_at FROM applicants WHERE status='pending'").fetchall()
             for row in rows:
                 id, name, phone1, course, status, status_updated_at = row
+
+                if status_updated_at is None:
+                    continue  # Agar sana bo'lmasa, o'tkazib yubor
+
+                # 'status_updated_at' offset-naive (timezone ko'rsatilmagan) string sifatida saqlangan,
+                # uni offset-aware datetimega o'tkazish uchun avval parse qilamiz, keyin lokalizatsiya qilamiz
                 status_time_naive = datetime.strptime(status_updated_at, '%Y-%m-%d %H:%M:%S')
                 status_time = tz.localize(status_time_naive)
+                
                 delta = now - status_time
                 if delta.total_seconds() > 30:  # 30 soniya test uchun
                     message = (
