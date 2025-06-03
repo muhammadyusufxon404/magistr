@@ -1,19 +1,30 @@
-<!doctype html>
-<html>
+<!DOCTYPE html>
+<html lang="uz">
 <head>
-    <title>Yangi abituriyentni ro‘yxatga olish</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <meta charset="UTF-8">
+    <title>Yangi arizachi qo'shish</title>
 </head>
 <body>
-    <h1>Yangi abituriyentni ro‘yxatga olish</h1>
-    <form method="POST">
-        <input name="name" placeholder="Ism" required>
-        <input name="phone1" placeholder="Telefon 1" required>
-        <input name="phone2" placeholder="Telefon 2 (ixtiyoriy)">
-        <input name="course" placeholder="Kurs nomi" required>
-        <textarea name="note" placeholder="Izoh (ixtiyoriy)"></textarea>
-        <button type="submit">Jo‘natish</button>
+    <h1>Yangi arizachi qo'shish</h1>
+    <form method="post">
+        <label>Ism:</label><br>
+        <input type="text" name="name" required><br><br>
+
+        <label>Telefon 1:</label><br>
+        <input type="text" name="phone1" required><br><br>
+
+        <label>Telefon 2:</label><br>
+        <input type="text" name="phone2"><br><br>
+
+        <label>Kurs:</label><br>
+        <input type="text" name="course" required><br><br>
+
+        <label>Qaydlar:</label><br>
+        <textarea name="note"></textarea><br><br>
+
+        <button type="submit">Qo'shish</button>
     </form>
-    <a href="/">← Orqaga</a>
+    <br>
+    <a href="{{ url_for('index') }}">Orqaga</a>
 </body>
 </html>
